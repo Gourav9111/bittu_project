@@ -1,0 +1,50 @@
+[
+    {
+        "application_id": "JSMAVFWFR2CO",
+        "name": "efgbngsqdafsvbgnh",
+        "mobile": "7676767898",
+        "city": "bhopal",
+        "loan_type": "Car Loan",
+        "loan_amount": 678888,
+        "monthly_income": 60000,
+        "pan_aadhar": "FAS4FG687J",
+        "status": "Pending",
+        "created_at": "2025-09-02 22:06:18"
+    },
+    {
+        "application_id": "JSMA7E038SM9",
+        "name": "HARSH SAHU",
+        "mobile": "7131703768",
+        "city": "bhopal",
+        "loan_type": "Renovation Loan",
+        "loan_amount": 600000000,
+        "monthly_income": 60000,
+        "pan_aadhar": "coifjijiojjjo",
+        "status": "Pending",
+        "created_at": "2025-09-02 21:35:20"
+    },
+    {
+        "application_id": "JSMALZEL072Y",
+        "name": "HARSH SAHU",
+        "mobile": "9131703768",
+        "city": "bhopal",
+        "loan_type": "Balance Transfer",
+        "loan_amount": 600000000,
+        "monthly_income": 567898,
+        "pan_aadhar": "coifjijiojjjo",
+        "status": "Pending",
+        "created_at": "2025-09-02 21:29:35"
+    },
+    {
+        "application_id": "JSMATPJG1AYK",
+        "name": "HARSH SAHU",
+        "mobile": "9131703768",
+        "city": "bhopal",
+        "loan_type": "Personal Loan",
+        "loan_amount": 600000000,
+        "monthly_income": 6000000000,
+        "pan_aadhar": "FAS4FG687J",
+        "status": "Pending",
+        "created_at": "2025-09-02 21:25:50"
+    }
+]

@@ -1,0 +1,38 @@
+[
+    {
+        "application_id": "JSMAA1B2C3D4",
+        "name": "Amit Sharma",
+        "mobile": "9876543210",
+        "city": "Bhopal",
+        "loan_type": "Personal Loan",
+        "loan_amount": 500000,
+        "monthly_income": 45000,
+        "pan_aadhar": "ABCD12345E",
+        "status": "Approved",
+        "created_at": "2024-05-20 10:30:00"
+    },
+    {
+        "application_id": "JSMAB5F6G7H8",
+        "name": "Pooja Singh",
+        "mobile": "8765432109",
+        "city": "Indore",
+        "loan_type": "Home Loan",
+        "loan_amount": 2500000,
+        "monthly_income": 85000,
+        "pan_aadhar": "FGHI98765J",
+        "status": "Approved",
+        "created_at": "2024-05-19 14:45:00"
+    },
+    {
+        "application_id": "JSMAC9I0J1K2",
+        "name": "Sanjay Verma",
+        "mobile": "7654321098",
+        "city": "Jabalpur",
+        "loan_type": "Car Loan",
+        "loan_amount": 800000,
+        "monthly_income": 60000,
+        "pan_aadhar": "KLMN12345O",
+        "status": "Processing",
+        "created_at": "2024-05-18 09:15:00"
+    }
+]
