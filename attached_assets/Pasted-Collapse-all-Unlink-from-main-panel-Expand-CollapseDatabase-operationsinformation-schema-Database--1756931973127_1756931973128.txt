@@ -1,0 +1,134 @@
+Collapse all Unlink from main panel
+Expand/CollapseDatabase operationsinformation_schema
+Database operationsu900473099_gourav
+NewNew
+Expand/CollapseStructureadmin_users
+Expand/CollapseStructurecontact_messages
+Expand/CollapseStructuredsa_applications
+Expand/CollapseStructuredsa_users
+Expand/CollapseStructurelead_assignments
+Expand/CollapseStructureloan_applications
+Expand/CollapseStructureloan_categories
+Expand/CollapseStructureloan_types
+Expand/CollapseStructurenotifications
+ Server: 127.0.0.1:3306
+ Database: u900473099_gourav
+ Table: dsa_applications
+Browse Browse(current)
+Structure Structure
+SQL SQL
+Search Search
+Insert Insert
+Export Export
+Import Import
+Operations Operations
+Triggers Triggers
+Page-related settings Click on the bar to scroll to top of page
+SQL Query Console Console
+ascendingdescendingOrder:Debug SQLExecution orderTime takenOrder by:Group queries
+Some error occurred while getting SQL debug info.
+OptionsSet default
+Always expand query messages
+Show query history at start
+Show current browsing query
+ Execute queries on Enter and insert new line with Shift+Enter. To make this permanent, view settings.
+Switch to dark theme
+ Showing rows 0 - 1 (2 total, Query took 0.0002 seconds.)
+SELECT * FROM `dsa_applications`
+ Profiling [ Edit inline ] [ Edit ] [ Explain SQL ] [ Create PHP code ] [ Refresh ]
+ Show all	|			Number of rows: 
+25
+Filter rows: 
+Search this table
+Sort by key: 
+None
+Full texts
+id
+application_id
+dsa_user_id
+loan_type
+customer_name
+customer_mobile
+customer_email
+mother_name
+office_address
+address_proof
+salary_amount
+aadhar_card_file
+aadhar_card_number
+pan_card_file
+pan_card_number
+salary_slip_files
+bank_statement_file
+other_documents
+gumasta_udhyam_file
+itr_files
+income_type
+electricity_bill_file
+property_papers
+reference_details
+status
+admin_notes
+created_at
+updated_at
+
+Edit Edit
+Copy Copy
+Delete Delete
+1
+DSA20258284
+3
+Personal Loan
+aman
+7867868788
+suman@gmail.com
+suman
+adresss
+sdnvnoidfj
+50000.00
+aadhar_68b88fa7b5ea7.png
+2345677654323567
+pan_68b88fa7b64eb.png
+FASPRO633F
+["salary_68b88fa7b6b72.pdf"]
+bank_68b88fa7b6aa5.pdf
+["other_68b88fa7b6c28.png"]
+NULL
+[]
+NULL
+[]
+[{"name":"fvbgnhmjhgfd","number":"axscdvf"},{"name...
+Pending
+NULL
+2025-09-03 18:57:43
+2025-09-03 18:57:43
+
+Edit Edit
+Copy Copy
+Delete Delete
+2
+DSA20255773
+3
+Business Loan
+HARSH SAHU
+0913303768
+jsmwdcfbhopal@gmail.com
+Shopsczdvxfbc No 2, Near Mittal College, Karond
+0.00
+aadhar_68b892bba28f9.pdf
+2345677654323564
+pan_68b892bba2aa3.pdf
+2345678uyjhgbfd
+[]
+bank_68b892bba2b6e.pdf
+[]
+gumasta_68b892bba2c26.pdf
+["itr_68b892bba2ce1.pdf"]
+NULL
+[]
+[{"name":"qwergft","number":"szxvcfbgnh"},{"name":...
+Pending
+NULL
+2025-09-03 19:10:51
+2025-09-03 19:10:51
+With selected:  Check all With selected:    
