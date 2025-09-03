@@ -284,14 +284,7 @@ function viewApplication(applicationId) {
                     if (data.status === 'success') {
                         modalBody.innerHTML = data.html;
                         
-                        // Attach form event listener
-                        const statusForm = document.getElementById('updateApplicationStatus');
-                        if (statusForm) {
-                            statusForm.addEventListener('submit', function(e) {
-                                e.preventDefault();
-                                updateApplicationStatus(this);
-                            });
-                        }
+                        // Form submission is already handled by onsubmit attribute
                     } else {
                         modalBody.innerHTML = `
                             <div class="alert alert-danger">
@@ -332,7 +325,6 @@ function viewApplication(applicationId) {
 
 function updateApplicationStatus(form) {
     const formData = new FormData(form);
-    formData.append('application_id', form.dataset.appId);
     
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
@@ -356,6 +348,7 @@ function updateApplicationStatus(form) {
                         alert('Error updating status: ' + (data.message || 'Unknown error'));
                     }
                 } catch (e) {
+                    console.error('Parse error:', e);
                     alert('Error parsing response from server.');
                 }
             } else {

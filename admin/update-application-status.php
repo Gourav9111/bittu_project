@@ -1,40 +1,4 @@
-<?php
-require_once '../config-dev.php';
 
-// For development - bypass login check
-$_SESSION['admin_id'] = 1;
-
-$response = ['success' => false, 'message' => ''];
-
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $application_id = intval($_POST['application_id']);
-    $status = sanitizeInput($_POST['status']);
-    $admin_notes = sanitizeInput($_POST['admin_notes'] ?? '');
-    
-    try {
-        $stmt = $pdo->prepare("
-            UPDATE dsa_applications 
-            SET status = ?, admin_notes = ?, updated_at = NOW() 
-            WHERE id = ?
-        ");
-        
-        if ($stmt->execute([$status, $admin_notes, $application_id])) {
-            $response['success'] = true;
-            $response['message'] = 'Application status updated successfully';
-        } else {
-            $response['message'] = 'Failed to update application status';
-        }
-        
-    } catch (Exception $e) {
-        $response['message'] = 'Database error: ' . $e->getMessage();
-    }
-} else {
-    $response['message'] = 'Invalid request method';
-}
-
-header('Content-Type: application/json');
-echo json_encode($response);
-?>
 <?php
 require_once '../config.php';
 
@@ -68,10 +32,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['application_id'])) {
             error_log('Update Application Status Error: ' . $e->getMessage());
         }
     } else {
-        $response['message'] = 'Invalid application ID or status';
+        $response['message'] = 'Invalid application ID or status. Received ID: ' . $application_id . ', Status: ' . $status;
     }
 } else {
-    $response['message'] = 'Invalid request method or missing data';
+    $response['message'] = 'Invalid request method or missing data. POST data: ' . json_encode($_POST);
 }
 
 header('Content-Type: application/json');

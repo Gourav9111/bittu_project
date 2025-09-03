@@ -225,7 +225,8 @@ if (isset($_GET['id'])) {
             $html .= '<div class="row mt-4">';
             $html .= '<div class="col-12">';
             $html .= '<h6 class="text-danger">Update Status</h6>';
-            $html .= '<form id="updateApplicationStatus" data-app-id="' . $application['id'] . '">';
+            $html .= '<form id="updateApplicationStatus" data-app-id="' . $application['id'] . '" onsubmit="updateApplicationStatus(this); return false;">';
+            $html .= '<input type="hidden" name="application_id" value="' . $application['id'] . '">';
             $html .= '<div class="row">';
             $html .= '<div class="col-md-6 mb-3">';
             $html .= '<select name="status" class="form-control" required>';
@@ -291,7 +292,6 @@ if ($popup_mode && $response['status'] === 'success') {
         <script>
         function updateApplicationStatus(form) {
             const formData = new FormData(form);
-            formData.append('application_id', form.dataset.appId);
             
             const submitBtn = form.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
@@ -320,6 +320,7 @@ if ($popup_mode && $response['status'] === 'success') {
                                 alert('Error updating status: ' + (data.message || 'Unknown error'));
                             }
                         } catch (e) {
+                            console.error('Parse error:', e);
                             alert('Error parsing response from server.');
                         }
                     } else {
