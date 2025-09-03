@@ -22,9 +22,11 @@ CREATE TABLE IF NOT EXISTS dsa_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     mobile VARCHAR(15) NOT NULL,
+    email VARCHAR(100) NOT NULL,
     experience VARCHAR(50) NOT NULL,
     username VARCHAR(50) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
+    dsa_id VARCHAR(50) UNIQUE,
     profile_pic VARCHAR(255),
     kyc_status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
     status ENUM('Active', 'Inactive') DEFAULT 'Active',
@@ -35,6 +37,7 @@ CREATE TABLE IF NOT EXISTS dsa_users (
 CREATE TABLE IF NOT EXISTS admin_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) NOT NULL,
     password VARCHAR(255) NOT NULL,
     role ENUM('super', 'admin') DEFAULT 'admin',
     status ENUM('Active', 'Inactive') DEFAULT 'Active',
@@ -114,6 +117,49 @@ CREATE TABLE IF NOT EXISTS loan_types (
     min_interest_rate DECIMAL(5,2) DEFAULT 7.00,
     max_interest_rate DECIMAL(5,2) DEFAULT 24.00,
     is_active BOOLEAN DEFAULT TRUE
+);
+
+-- DSA Applications table - stores loan applications submitted by DSA users
+CREATE TABLE IF NOT EXISTS dsa_applications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    application_id VARCHAR(50) UNIQUE NOT NULL,
+    dsa_user_id INT NOT NULL,
+    loan_type ENUM('Personal Loan', 'Business Loan', 'Home Loan', 'Car Loan', 'Gold Loan', 'Plot Loan') NOT NULL,
+    customer_name VARCHAR(100) NOT NULL,
+    customer_mobile VARCHAR(15) NOT NULL,
+    customer_email VARCHAR(100),
+    mother_name VARCHAR(100),
+    office_address TEXT,
+    address_proof TEXT,
+    salary_amount DECIMAL(10,2),
+    
+    -- Document uploads (store file paths)
+    aadhar_card_file VARCHAR(255),
+    aadhar_card_number VARCHAR(20),
+    pan_card_file VARCHAR(255),
+    pan_card_number VARCHAR(15),
+    salary_slip_files TEXT, -- JSON array of file paths
+    bank_statement_file VARCHAR(255),
+    other_documents TEXT, -- JSON array of file paths
+    
+    -- Business loan specific fields
+    gumasta_udhyam_file VARCHAR(255),
+    itr_files TEXT, -- JSON array of 3 years ITR files
+    
+    -- Home loan specific fields
+    income_type ENUM('Self Employed', 'Salaried - Cash', 'Salaried - Account'),
+    electricity_bill_file VARCHAR(255),
+    property_papers TEXT, -- JSON array of property document files
+    
+    -- Reference details (JSON format for multiple references)
+    reference_details TEXT,
+    
+    status ENUM('Pending', 'In Progress', 'Approved', 'Rejected') DEFAULT 'Pending',
+    admin_notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (dsa_user_id) REFERENCES dsa_users(id) ON DELETE CASCADE
 );
 
 INSERT INTO loan_types (name, description, min_amount, max_amount, min_interest_rate, max_interest_rate) VALUES

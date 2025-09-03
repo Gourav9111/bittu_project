@@ -145,8 +145,11 @@ include '../includes/header.php';
                             <h6 class="mb-0"><i class="fas fa-users me-2"></i>DSA Management</h6>
                         </div>
                         <div class="card-body">
-                            <p class="card-text">Manage Direct Selling Agents, approvals, and lead assignments.</p>
-                            <a href="manage-dsa.php" class="btn btn-success w-100">
+                            <p class="card-text">View DSA users and their submitted loan applications.</p>
+                            <a href="dsaleads.php" class="btn btn-success w-100 mb-2">
+                                <i class="fas fa-file-alt me-2"></i>DSA Leads
+                            </a>
+                            <a href="manage-dsa.php" class="btn btn-outline-success w-100">
                                 <i class="fas fa-user-cog me-2"></i>Manage DSAs
                             </a>
                         </div>

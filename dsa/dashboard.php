@@ -8,43 +8,46 @@ if (!isset($_SESSION['dsa_id'])) {
 }
 
 $page_title = "DSA Dashboard";
-$page_description = "DSA Dashboard - Manage your leads and track performance";
+$page_description = "DSA Dashboard - Submit loan applications";
 
 $dsa_id = $_SESSION['dsa_id'];
 
 // Fetch DSA information
-$stmt = $pdo->prepare("SELECT * FROM dsa_users WHERE id = ?");
-$stmt->execute([$dsa_id]);
-$dsa_info = $stmt->fetch();
+try {
+    $stmt = $pdo->prepare("SELECT * FROM dsa_users WHERE id = ?");
+    $stmt->execute([$dsa_id]);
+    $dsa_info = $stmt->fetch();
+} catch (Exception $e) {
+    // Fallback DSA info if database is not available
+    $dsa_info = [
+        'id' => $dsa_id,
+        'name' => $_SESSION['dsa_name'] ?? 'DSA User',
+        'mobile' => $_SESSION['dsa_mobile'] ?? 'N/A',
+        'email' => $_SESSION['dsa_email'] ?? 'N/A',
+        'profile_pic' => null
+    ];
+}
 
-// Fetch assigned leads
-$stmt = $pdo->prepare("
-    SELECT la.*, las.status as assignment_status, las.notes, las.created_at as assigned_date
-    FROM loan_applications la 
-    JOIN lead_assignments las ON la.id = las.application_id 
-    WHERE las.dsa_id = ? 
-    ORDER BY las.created_at DESC
-");
-$stmt->execute([$dsa_id]);
-$assigned_leads = $stmt->fetchAll();
-
-// Fetch notifications
-$stmt = $pdo->prepare("
-    SELECT * FROM notifications 
-    WHERE (target = 'dsa' AND target_user_id = ?) OR (target = 'all') 
-    ORDER BY created_at DESC 
-    LIMIT 5
-");
-$stmt->execute([$dsa_id]);
-$notifications = $stmt->fetchAll();
+// Fetch submitted applications
+try {
+    $stmt = $pdo->prepare("
+        SELECT * FROM dsa_applications 
+        WHERE dsa_user_id = ? 
+        ORDER BY created_at DESC
+    ");
+    $stmt->execute([$dsa_id]);
+    $submitted_applications = $stmt->fetchAll();
+} catch (Exception $e) {
+    $submitted_applications = [];
+}
 
 // Dashboard statistics
-$total_leads = count($assigned_leads);
-$completed_leads = count(array_filter($assigned_leads, function($lead) {
-    return $lead['assignment_status'] == 'Completed';
+$total_applications = count($submitted_applications);
+$pending_applications = count(array_filter($submitted_applications, function($app) {
+    return $app['status'] == 'Pending';
 }));
-$pending_leads = count(array_filter($assigned_leads, function($lead) {
-    return in_array($lead['assignment_status'], ['Assigned', 'In Progress', 'Follow-Up']);
+$approved_applications = count(array_filter($submitted_applications, function($app) {
+    return $app['status'] == 'Approved';
 }));
 
 include '../includes/header.php';
@@ -105,7 +108,7 @@ include '../includes/header.php';
                             <div class="row align-items-center">
                                 <div class="col-md-8">
                                     <h4 class="mb-2">Welcome back, <?php echo htmlspecialchars($dsa_info['name']); ?>!</h4>
-                                    <p class="mb-0">Track your leads and manage your performance from this dashboard.</p>
+                                    <p class="mb-0">Submit loan applications and track your performance from this dashboard.</p>
                                 </div>
                                 <div class="col-md-4 text-end">
                                     <a href="../logout.php" class="btn btn-light">
@@ -118,174 +121,519 @@ include '../includes/header.php';
                 </div>
             </div>
 
+            <!-- Success/Error Messages -->
+            <?php if (isset($_SESSION['success_message'])): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i><?php echo $_SESSION['success_message']; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <?php unset($_SESSION['success_message']); endif; ?>
+
+            <?php if (isset($_SESSION['error_message'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i><?php echo $_SESSION['error_message']; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <?php unset($_SESSION['error_message']); endif; ?>
+
             <!-- Statistics Cards -->
             <div class="row mb-4">
                 <div class="col-md-4">
-                    <div class="dashboard-card">
-                        <div class="dashboard-stat">
-                            <div class="dashboard-stat-number"><?php echo $total_leads; ?></div>
-                            <div class="dashboard-stat-label">Total Leads</div>
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <h3><?php echo $total_applications; ?></h3>
+                            <p class="mb-0">Total Applications</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="dashboard-card">
-                        <div class="dashboard-stat">
-                            <div class="dashboard-stat-number"><?php echo $pending_leads; ?></div>
-                            <div class="dashboard-stat-label">Pending Leads</div>
+                    <div class="card bg-warning text-white">
+                        <div class="card-body text-center">
+                            <h3><?php echo $pending_applications; ?></h3>
+                            <p class="mb-0">Pending Applications</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="dashboard-card">
-                        <div class="dashboard-stat">
-                            <div class="dashboard-stat-number"><?php echo $completed_leads; ?></div>
-                            <div class="dashboard-stat-label">Completed</div>
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <h3><?php echo $approved_applications; ?></h3>
+                            <p class="mb-0">Approved Applications</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Assigned Leads -->
-            <div class="card">
-                <div class="card-header bg-danger text-white">
-                    <h5 class="mb-0"><i class="fas fa-users me-2"></i>Assigned Leads</h5>
-                </div>
-                <div class="card-body p-0">
-                    <?php if ($assigned_leads): ?>
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Application ID</th>
-                                    <th>Customer Name</th>
-                                    <th>Loan Type</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
-                                    <th>Assigned Date</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($assigned_leads as $lead): ?>
-                                <tr>
-                                    <td>
-                                        <strong class="text-danger"><?php echo htmlspecialchars($lead['application_id']); ?></strong>
-                                    </td>
-                                    <td>
-                                        <div>
-                                            <div class="fw-bold"><?php echo htmlspecialchars($lead['name']); ?></div>
-                                            <small class="text-muted"><?php echo htmlspecialchars($lead['mobile']); ?></small>
+            <!-- Loan Application Forms -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="mb-0"><i class="fas fa-plus me-2"></i>Submit New Loan Application</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Loan Type Selection -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h6 class="text-danger mb-3">Select Loan Type:</h6>
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <button class="btn btn-outline-danger w-100 loan-type-btn" onclick="showLoanForm('personal')">
+                                                <i class="fas fa-user-tie fa-2x mb-2"></i><br>
+                                                Personal Loan
+                                            </button>
                                         </div>
-                                    </td>
-                                    <td><?php echo htmlspecialchars($lead['loan_type']); ?></td>
-                                    <td>₹<?php echo number_format($lead['loan_amount']); ?></td>
-                                    <td>
-                                        <span class="badge <?php 
-                                            switch($lead['assignment_status']) {
-                                                case 'Assigned': echo 'bg-primary'; break;
-                                                case 'In Progress': echo 'bg-warning text-dark'; break;
-                                                case 'Follow-Up': echo 'bg-info'; break;
-                                                case 'Submitted': echo 'bg-success'; break;
-                                                case 'Completed': echo 'bg-success'; break;
-                                                default: echo 'bg-secondary';
-                                            }
-                                        ?>">
-                                            <?php echo htmlspecialchars($lead['assignment_status']); ?>
-                                        </span>
-                                    </td>
-                                    <td><?php echo date('M d, Y', strtotime($lead['assigned_date'])); ?></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-danger" 
-                                                onclick="updateLeadStatus(<?php echo $lead['application_id']; ?>, '<?php echo $lead['assignment_status']; ?>')">
-                                            <i class="fas fa-edit"></i> Update
-                                        </button>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                        <div class="col-md-4 mb-3">
+                                            <button class="btn btn-outline-danger w-100 loan-type-btn" onclick="showLoanForm('business')">
+                                                <i class="fas fa-briefcase fa-2x mb-2"></i><br>
+                                                Business Loan
+                                            </button>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <button class="btn btn-outline-danger w-100 loan-type-btn" onclick="showLoanForm('home')">
+                                                <i class="fas fa-home fa-2x mb-2"></i><br>
+                                                Home Loan
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Personal Loan Form -->
+                            <div id="personalLoanForm" class="loan-form" style="display: none;">
+                                <h6 class="text-danger mb-3">Personal Loan Application</h6>
+                                <form method="POST" action="submit-application.php" enctype="multipart/form-data">
+                                    <input type="hidden" name="loan_type" value="Personal Loan">
+                                    <input type="hidden" name="dsa_user_id" value="<?php echo $dsa_id; ?>">
+                                    
+                                    <div class="row">
+                                        <!-- Basic Information -->
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Customer Name <span class="text-danger">*</span></label>
+                                            <input type="text" name="customer_name" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Mother Name <span class="text-danger">*</span></label>
+                                            <input type="text" name="mother_name" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Mobile Number <span class="text-danger">*</span></label>
+                                            <input type="tel" name="customer_mobile" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Email ID <span class="text-danger">*</span></label>
+                                            <input type="email" name="customer_email" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Office Address <span class="text-danger">*</span></label>
+                                            <textarea name="office_address" class="form-control" rows="2" required></textarea>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Address Proof</label>
+                                            <textarea name="address_proof" class="form-control" rows="2"></textarea>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Salary Amount <span class="text-danger">*</span></label>
+                                            <input type="number" name="salary_amount" class="form-control" required>
+                                        </div>
+                                        
+                                        <!-- Document Uploads -->
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Aadhar Card Number <span class="text-danger">*</span></label>
+                                            <input type="text" name="aadhar_card_number" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Aadhar Card Upload <span class="text-danger">*</span></label>
+                                            <input type="file" name="aadhar_card_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">PAN Card Number <span class="text-danger">*</span></label>
+                                            <input type="text" name="pan_card_number" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">PAN Card Upload <span class="text-danger">*</span></label>
+                                            <input type="file" name="pan_card_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">3 Month Salary Slips <span class="text-danger">*</span></label>
+                                            <input type="file" name="salary_slip_files[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx" multiple required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">1 Year Bank Statement <span class="text-danger">*</span></label>
+                                            <input type="file" name="bank_statement_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx" required>
+                                        </div>
+                                        
+                                        <!-- References -->
+                                        <div class="col-12 mb-3">
+                                            <h6 class="text-danger">Reference Details</h6>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Reference 1 Name <span class="text-danger">*</span></label>
+                                            <input type="text" name="reference1_name" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Reference 1 Number <span class="text-danger">*</span></label>
+                                            <input type="tel" name="reference1_number" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Reference 2 Name <span class="text-danger">*</span></label>
+                                            <input type="text" name="reference2_name" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Reference 2 Number <span class="text-danger">*</span></label>
+                                            <input type="tel" name="reference2_number" class="form-control" required>
+                                        </div>
+                                        
+                                        <!-- Other Documents -->
+                                        <div class="col-md-12 mb-3">
+                                            <label class="form-label">Other Documents Upload</label>
+                                            <input type="file" name="other_documents[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx" multiple>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-secondary me-2" onclick="hideLoanForm()">Cancel</button>
+                                        <button type="submit" class="btn btn-danger">Submit Personal Loan Application</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Business Loan Form -->
+                            <div id="businessLoanForm" class="loan-form" style="display: none;">
+                                <h6 class="text-danger mb-3">Business Loan Application</h6>
+                                <form method="POST" action="submit-application.php" enctype="multipart/form-data">
+                                    <input type="hidden" name="loan_type" value="Business Loan">
+                                    <input type="hidden" name="dsa_user_id" value="<?php echo $dsa_id; ?>">
+                                    
+                                    <div class="row">
+                                        <!-- Basic Information -->
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Customer Name <span class="text-danger">*</span></label>
+                                            <input type="text" name="customer_name" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Mobile Number <span class="text-danger">*</span></label>
+                                            <input type="tel" name="customer_mobile" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Email ID <span class="text-danger">*</span></label>
+                                            <input type="email" name="customer_email" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Address Proof</label>
+                                            <textarea name="address_proof" class="form-control" rows="2"></textarea>
+                                        </div>
+                                        
+                                        <!-- Document Uploads -->
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Aadhar Card Number <span class="text-danger">*</span></label>
+                                            <input type="text" name="aadhar_card_number" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Aadhar Card Upload <span class="text-danger">*</span></label>
+                                            <input type="file" name="aadhar_card_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">PAN Card Number <span class="text-danger">*</span></label>
+                                            <input type="text" name="pan_card_number" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">PAN Card Upload <span class="text-danger">*</span></label>
+                                            <input type="file" name="pan_card_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">1 Year Bank Statement <span class="text-danger">*</span></label>
+                                            <input type="file" name="bank_statement_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Gumasta or Udhyam Aadhar <span class="text-danger">*</span></label>
+                                            <input type="file" name="gumasta_udhyam_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">3 Years ITR <span class="text-danger">*</span></label>
+                                            <input type="file" name="itr_files[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx" multiple required>
+                                        </div>
+                                        
+                                        <!-- References -->
+                                        <div class="col-12 mb-3">
+                                            <h6 class="text-danger">Reference Details</h6>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Reference 1 Name <span class="text-danger">*</span></label>
+                                            <input type="text" name="reference1_name" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Reference 1 Number <span class="text-danger">*</span></label>
+                                            <input type="tel" name="reference1_number" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Reference 2 Name <span class="text-danger">*</span></label>
+                                            <input type="text" name="reference2_name" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Reference 2 Number <span class="text-danger">*</span></label>
+                                            <input type="tel" name="reference2_number" class="form-control" required>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-secondary me-2" onclick="hideLoanForm()">Cancel</button>
+                                        <button type="submit" class="btn btn-danger">Submit Business Loan Application</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Home Loan Form -->
+                            <div id="homeLoanForm" class="loan-form" style="display: none;">
+                                <h6 class="text-danger mb-3">Home Loan Application</h6>
+                                <form method="POST" action="submit-application.php" enctype="multipart/form-data">
+                                    <input type="hidden" name="loan_type" value="Home Loan">
+                                    <input type="hidden" name="dsa_user_id" value="<?php echo $dsa_id; ?>">
+                                    
+                                    <div class="row">
+                                        <!-- Basic Information -->
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Customer Name <span class="text-danger">*</span></label>
+                                            <input type="text" name="customer_name" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Mobile Number <span class="text-danger">*</span></label>
+                                            <input type="tel" name="customer_mobile" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Email ID <span class="text-danger">*</span></label>
+                                            <input type="email" name="customer_email" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Income Type <span class="text-danger">*</span></label>
+                                            <select name="income_type" class="form-control" required>
+                                                <option value="">Select Income Type</option>
+                                                <option value="Self Employed">Self Employed</option>
+                                                <option value="Salaried - Cash">Salaried - Cash Salary</option>
+                                                <option value="Salaried - Account">Salaried - Account Salary</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <!-- Document Uploads -->
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Aadhar Card Number <span class="text-danger">*</span></label>
+                                            <input type="text" name="aadhar_card_number" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Aadhar Card Upload <span class="text-danger">*</span></label>
+                                            <input type="file" name="aadhar_card_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">PAN Card Number <span class="text-danger">*</span></label>
+                                            <input type="text" name="pan_card_number" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">PAN Card Upload <span class="text-danger">*</span></label>
+                                            <input type="file" name="pan_card_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Income Documents <span class="text-danger">*</span></label>
+                                            <input type="file" name="salary_slip_files[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx" multiple required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Electricity Bill or Rent Agreement <span class="text-danger">*</span></label>
+                                            <input type="file" name="electricity_bill_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx" required>
+                                        </div>
+                                        <div class="col-md-12 mb-3">
+                                            <label class="form-label">Property Papers <span class="text-danger">*</span></label>
+                                            <input type="file" name="property_papers[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx" multiple required>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-secondary me-2" onclick="hideLoanForm()">Cancel</button>
+                                        <button type="submit" class="btn btn-danger">Submit Home Loan Application</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                     </div>
-                    <?php else: ?>
-                    <div class="text-center py-5">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <h6 class="text-muted">No leads assigned yet</h6>
-                        <p class="text-muted">Check back later for new lead assignments.</p>
+                </div>
+            </div>
+
+            <!-- Submitted Applications -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>My Submitted Applications</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <?php if ($submitted_applications): ?>
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Application ID</th>
+                                            <th>Loan Type</th>
+                                            <th>Customer Name</th>
+                                            <th>Status</th>
+                                            <th>Submitted Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($submitted_applications as $application): ?>
+                                        <tr>
+                                            <td>
+                                                <strong class="text-danger"><?php echo htmlspecialchars($application['application_id']); ?></strong>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info"><?php echo htmlspecialchars($application['loan_type']); ?></span>
+                                            </td>
+                                            <td><?php echo htmlspecialchars($application['customer_name']); ?></td>
+                                            <td>
+                                                <span class="badge <?php 
+                                                    switch($application['status']) {
+                                                        case 'Pending': echo 'bg-warning text-dark'; break;
+                                                        case 'Approved': echo 'bg-success'; break;
+                                                        case 'Rejected': echo 'bg-danger'; break;
+                                                        case 'In Progress': echo 'bg-primary'; break;
+                                                        default: echo 'bg-secondary';
+                                                    }
+                                                ?>">
+                                                    <?php echo htmlspecialchars($application['status']); ?>
+                                                </span>
+                                            </td>
+                                            <td><?php echo date('M d, Y H:i', strtotime($application['created_at'])); ?></td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <?php else: ?>
+                            <div class="text-center py-5">
+                                <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                                <h6 class="text-muted">No Applications Submitted Yet</h6>
+                                <p class="text-muted">Submit your first loan application using the forms above.</p>
+                            </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                    <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Update Status Modal -->
-<div class="modal fade" id="updateStatusModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title text-danger">Update Lead Status</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="updateStatusForm">
-                <div class="modal-body">
-                    <input type="hidden" id="updateApplicationId" name="application_id">
-                    
-                    <div class="form-group">
-                        <label for="newStatus" class="form-label">Status</label>
-                        <select class="form-control" id="newStatus" name="status" required>
-                            <option value="Assigned">Assigned</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Follow-Up">Follow-Up</option>
-                            <option value="Submitted">Submitted</option>
-                            <option value="Completed">Completed</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="statusNotes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="statusNotes" name="notes" rows="3" 
-                                  placeholder="Add any notes or comments about this lead"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Update Status</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<script>
-function updateLeadStatus(applicationId, currentStatus) {
-    document.getElementById('updateApplicationId').value = applicationId;
-    document.getElementById('newStatus').value = currentStatus;
-    
-    const modal = new bootstrap.Modal(document.getElementById('updateStatusModal'));
-    modal.show();
+<style>
+.loan-type-btn {
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
-document.getElementById('updateStatusForm').addEventListener('submit', function(e) {
-    e.preventDefault();
+.loan-type-btn:hover {
+    background-color: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+.loan-type-btn.active {
+    background-color: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+.loan-form {
+    border: 2px solid #dc3545;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+}
+</style>
+
+<script>
+function showLoanForm(loanType) {
+    // Hide all loan forms
+    document.querySelectorAll('.loan-form').forEach(form => {
+        form.style.display = 'none';
+    });
     
-    const formData = new FormData(this);
+    // Remove active class from all buttons
+    document.querySelectorAll('.loan-type-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
     
-    fetch('update-lead-status.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
+    // Show selected form and activate button
+    if (loanType === 'personal') {
+        document.getElementById('personalLoanForm').style.display = 'block';
+        event.target.classList.add('active');
+    } else if (loanType === 'business') {
+        document.getElementById('businessLoanForm').style.display = 'block';
+        event.target.classList.add('active');
+    } else if (loanType === 'home') {
+        document.getElementById('homeLoanForm').style.display = 'block';
+        event.target.classList.add('active');
+    }
+}
+
+function hideLoanForm() {
+    // Hide all loan forms
+    document.querySelectorAll('.loan-form').forEach(form => {
+        form.style.display = 'none';
+    });
+    
+    // Remove active class from all buttons
+    document.querySelectorAll('.loan-type-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+}
+
+// Validation functions
+function validateForm(form) {
+    const requiredFields = form.querySelectorAll('input[required], select[required], textarea[required]');
+    let isValid = true;
+    
+    requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+            field.classList.add('is-invalid');
+            isValid = false;
         } else {
-            alert('Error updating status: ' + data.message);
+            field.classList.remove('is-invalid');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+    });
+    
+    return isValid;
+}
+
+// File validation
+function validateFileSize(fileInput) {
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const files = fileInput.files;
+    
+    for (let i = 0; i < files.length; i++) {
+        if (files[i].size > maxSize) {
+            alert('File ' + files[i].name + ' is too large. Maximum size is 5MB.');
+            fileInput.value = '';
+            return false;
+        }
+    }
+    return true;
+}
+
+// Add file validation to all file inputs
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        input.addEventListener('change', function() {
+            validateFileSize(this);
+        });
+    });
+    
+    // Add form validation
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            if (!validateForm(this)) {
+                e.preventDefault();
+                alert('Please fill in all required fields.');
+            }
+        });
     });
 });
 </script>
