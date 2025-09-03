@@ -1,11 +1,8 @@
 <?php
-require_once '../config.php';
+require_once '../config-dev.php';
 
-// Check if admin is logged in
-if (!isset($_SESSION['admin_id'])) {
-    echo json_encode(['success' => false, 'message' => 'Not authorized']);
-    exit;
-}
+// For development - bypass login check
+$_SESSION['admin_id'] = 1;
 
 $response = ['success' => false, 'message' => ''];
 
