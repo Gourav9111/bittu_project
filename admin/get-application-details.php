@@ -100,7 +100,8 @@ if (isset($_GET['id'])) {
                 $html .= '<div class="col-md-6 mb-2">';
                 $html .= '<strong>Aadhar Card:</strong> ' . htmlspecialchars($application['aadhar_card_number']);
                 if ($application['aadhar_card_file']) {
-                    $html .= ' <span class="badge bg-success">File Uploaded</span>';
+                    $file_url = 'view-file.php?file=' . urlencode($application['aadhar_card_file']) . '&dsa_id=' . $application['dsa_user_id'];
+                    $html .= ' <br><a href="' . $file_url . '" target="_blank" class="btn btn-sm btn-outline-primary mt-1"><i class="fas fa-eye me-1"></i>View File</a>';
                 }
                 $html .= '</div>';
             }
@@ -110,7 +111,8 @@ if (isset($_GET['id'])) {
                 $html .= '<div class="col-md-6 mb-2">';
                 $html .= '<strong>PAN Card:</strong> ' . htmlspecialchars($application['pan_card_number']);
                 if ($application['pan_card_file']) {
-                    $html .= ' <span class="badge bg-success">File Uploaded</span>';
+                    $file_url = 'view-file.php?file=' . urlencode($application['pan_card_file']) . '&dsa_id=' . $application['dsa_user_id'];
+                    $html .= ' <br><a href="' . $file_url . '" target="_blank" class="btn btn-sm btn-outline-primary mt-1"><i class="fas fa-eye me-1"></i>View File</a>';
                 }
                 $html .= '</div>';
             }
@@ -118,7 +120,8 @@ if (isset($_GET['id'])) {
             // Bank Statement
             if ($application['bank_statement_file']) {
                 $html .= '<div class="col-md-6 mb-2">';
-                $html .= '<strong>Bank Statement:</strong> <span class="badge bg-success">File Uploaded</span>';
+                $file_url = 'view-file.php?file=' . urlencode($application['bank_statement_file']) . '&dsa_id=' . $application['dsa_user_id'];
+                $html .= '<strong>Bank Statement:</strong> <br><a href="' . $file_url . '" target="_blank" class="btn btn-sm btn-outline-primary mt-1"><i class="fas fa-eye me-1"></i>View File</a>';
                 $html .= '</div>';
             }
             
@@ -132,7 +135,11 @@ if (isset($_GET['id'])) {
             // Salary Slips
             if (!empty($salary_slips)) {
                 $html .= '<div class="col-md-6 mb-2">';
-                $html .= '<strong>Salary Slips:</strong> <span class="badge bg-success">' . count($salary_slips) . ' Files Uploaded</span>';
+                $html .= '<strong>Salary Slips:</strong> (' . count($salary_slips) . ' files)<br>';
+                foreach ($salary_slips as $i => $file) {
+                    $file_url = 'view-file.php?file=' . urlencode($file) . '&dsa_id=' . $application['dsa_user_id'];
+                    $html .= '<a href="' . $file_url . '" target="_blank" class="btn btn-sm btn-outline-success mt-1 me-1"><i class="fas fa-file me-1"></i>Salary Slip ' . ($i + 1) . '</a>';
+                }
                 $html .= '</div>';
             }
             
@@ -146,10 +153,16 @@ if (isset($_GET['id'])) {
                 $html .= '<div class="col-12">';
                 $html .= '<h6 class="text-danger">Business Loan Specific</h6>';
                 if ($application['gumasta_udhyam_file']) {
-                    $html .= '<p><strong>Gumasta/Udhyam:</strong> <span class="badge bg-success">File Uploaded</span></p>';
+                    $file_path = '../uploads/dsa_applications/' . $application['dsa_user_id'] . '/' . $application['gumasta_udhyam_file'];
+                    $html .= '<p><strong>Gumasta/Udhyam:</strong><br><a href="' . $file_path . '" target="_blank" class="btn btn-sm btn-outline-warning"><i class="fas fa-file me-1"></i>View File</a></p>';
                 }
                 if (!empty($itr_files)) {
-                    $html .= '<p><strong>ITR Files:</strong> <span class="badge bg-success">' . count($itr_files) . ' Files Uploaded</span></p>';
+                    $html .= '<p><strong>ITR Files:</strong> (' . count($itr_files) . ' files)<br>';
+                    foreach ($itr_files as $i => $file) {
+                        $file_path = '../uploads/dsa_applications/' . $application['dsa_user_id'] . '/' . $file;
+                        $html .= '<a href="' . $file_path . '" target="_blank" class="btn btn-sm btn-outline-info mt-1 me-1"><i class="fas fa-file me-1"></i>ITR ' . ($i + 1) . '</a>';
+                    }
+                    $html .= '</p>';
                 }
                 $html .= '</div>';
                 $html .= '</div>';
@@ -163,10 +176,16 @@ if (isset($_GET['id'])) {
                     $html .= '<p><strong>Income Type:</strong> ' . htmlspecialchars($application['income_type']) . '</p>';
                 }
                 if ($application['electricity_bill_file']) {
-                    $html .= '<p><strong>Electricity Bill:</strong> <span class="badge bg-success">File Uploaded</span></p>';
+                    $file_path = '../uploads/dsa_applications/' . $application['dsa_user_id'] . '/' . $application['electricity_bill_file'];
+                    $html .= '<p><strong>Electricity Bill:</strong><br><a href="' . $file_path . '" target="_blank" class="btn btn-sm btn-outline-warning"><i class="fas fa-file me-1"></i>View File</a></p>';
                 }
                 if (!empty($property_papers)) {
-                    $html .= '<p><strong>Property Papers:</strong> <span class="badge bg-success">' . count($property_papers) . ' Files Uploaded</span></p>';
+                    $html .= '<p><strong>Property Papers:</strong> (' . count($property_papers) . ' files)<br>';
+                    foreach ($property_papers as $i => $file) {
+                        $file_path = '../uploads/dsa_applications/' . $application['dsa_user_id'] . '/' . $file;
+                        $html .= '<a href="' . $file_path . '" target="_blank" class="btn btn-sm btn-outline-success mt-1 me-1"><i class="fas fa-file me-1"></i>Property ' . ($i + 1) . '</a>';
+                    }
+                    $html .= '</p>';
                 }
                 $html .= '</div>';
                 $html .= '</div>';
@@ -206,7 +225,12 @@ if (isset($_GET['id'])) {
                 $html .= '<div class="row mb-3">';
                 $html .= '<div class="col-12">';
                 $html .= '<h6 class="text-danger">Other Documents</h6>';
-                $html .= '<p><span class="badge bg-info">' . count($other_docs) . ' Additional Files Uploaded</span></p>';
+                $html .= '<p><strong>Additional Files:</strong> (' . count($other_docs) . ' files)<br>';
+                foreach ($other_docs as $i => $file) {
+                    $file_path = '../uploads/dsa_applications/' . $application['dsa_user_id'] . '/' . $file;
+                    $html .= '<a href="' . $file_path . '" target="_blank" class="btn btn-sm btn-outline-secondary mt-1 me-1"><i class="fas fa-file me-1"></i>Document ' . ($i + 1) . '</a>';
+                }
+                $html .= '</p>';
                 $html .= '</div>';
                 $html .= '</div>';
             }
