@@ -243,7 +243,7 @@ function viewApplication(applicationId) {
     fetch('get-application-details.php?id=' + applicationId)
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
+            if (data.status === 'success') {
                 document.getElementById('applicationDetails').innerHTML = data.html;
                 const modal = new bootstrap.Modal(document.getElementById('applicationModal'));
                 modal.show();
