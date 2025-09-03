@@ -196,10 +196,17 @@ include '../includes/header.php';
                                     </td>
                                     <td><?php echo date('M d, Y H:i', strtotime($application['created_at'])); ?></td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-danger" 
-                                                onclick="viewApplication(<?php echo $application['id']; ?>)">
-                                            <i class="fas fa-eye me-1"></i>View Details
-                                        </button>
+                                        <div class="btn-group" role="group">
+                                            <button class="btn btn-sm btn-outline-danger" 
+                                                    onclick="viewApplication(<?php echo $application['id']; ?>)">
+                                                <i class="fas fa-eye me-1"></i>View Details
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-info" 
+                                                    onclick="viewApplicationNewWindow(<?php echo $application['id']; ?>)"
+                                                    title="Open in new window">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
@@ -238,61 +245,136 @@ include '../includes/header.php';
 </div>
 
 <script>
+// Check if Bootstrap is loaded
+if (typeof bootstrap === 'undefined') {
+    console.error('Bootstrap is not loaded');
+}
+
 function viewApplication(applicationId) {
-    const modal = new bootstrap.Modal(document.getElementById('applicationModal'));
+    console.log('Viewing application ID:', applicationId);
+    
+    const modalElement = document.getElementById('applicationModal');
     const modalBody = document.getElementById('applicationDetails');
-    modalBody.innerHTML = `<div class="text-center"><div class="spinner-border text-danger" role="status"><span class="visually-hidden">Loading...</span></div></div>`;
+    
+    if (!modalElement || !modalBody) {
+        console.error('Modal elements not found');
+        alert('Modal elements not found. Please refresh the page and try again.');
+        return;
+    }
+
+    const modal = new bootstrap.Modal(modalElement);
+    modalBody.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-danger" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading application details...</p>
+        </div>
+    `;
     modal.show();
 
-    fetch('get-application-details.php?id=' + applicationId)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.status === 'success') {
-                modalBody.innerHTML = data.html;
-                
-                const statusForm = document.getElementById('updateApplicationStatus');
-                if (statusForm) {
-                    statusForm.addEventListener('submit', function(e) {
-                        e.preventDefault();
-                        updateApplicationStatus(this);
-                    });
+    // Use XMLHttpRequest as fallback
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', 'get-application-details.php?id=' + applicationId, true);
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.status === 'success') {
+                        modalBody.innerHTML = data.html;
+                        
+                        // Attach form event listener
+                        const statusForm = document.getElementById('updateApplicationStatus');
+                        if (statusForm) {
+                            statusForm.addEventListener('submit', function(e) {
+                                e.preventDefault();
+                                updateApplicationStatus(this);
+                            });
+                        }
+                    } else {
+                        modalBody.innerHTML = `
+                            <div class="alert alert-danger">
+                                <strong>Error:</strong> ${data.message || 'Unknown error occurred'}
+                            </div>
+                        `;
+                    }
+                } catch (e) {
+                    console.error('JSON Parse Error:', e);
+                    modalBody.innerHTML = `
+                        <div class="alert alert-danger">
+                            <strong>Error:</strong> Invalid response from server. Response: ${xhr.responseText.substring(0, 200)}...
+                        </div>
+                    `;
                 }
             } else {
-                modalBody.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+                console.error('HTTP Error:', xhr.status, xhr.statusText);
+                modalBody.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>HTTP Error ${xhr.status}:</strong> ${xhr.statusText}
+                        <br><small>Please check if the file exists and try again.</small>
+                    </div>
+                `;
             }
-        })
-        .catch(error => {
-            console.error('Fetch Error:', error);
-            modalBody.innerHTML = `<div class="alert alert-danger">An error occurred while loading application details.</div>`;
-        });
+        }
+    };
+    xhr.onerror = function() {
+        console.error('Network Error');
+        modalBody.innerHTML = `
+            <div class="alert alert-danger">
+                <strong>Network Error:</strong> Could not connect to server.
+                <br><small>Please check your internet connection and try again.</small>
+            </div>
+        `;
+    };
+    xhr.send();
 }
 
 function updateApplicationStatus(form) {
     const formData = new FormData(form);
     formData.append('application_id', form.dataset.appId);
     
-    fetch('update-application-status.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Application status updated successfully!');
-            location.reload(); // Refresh the page to show updated status
-        } else {
-            alert('Error updating status: ' + data.message);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Updating...';
+    submitBtn.disabled = true;
+    
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'update-application-status.php', true);
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            
+            if (xhr.status === 200) {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        alert('Application status updated successfully!');
+                        location.reload();
+                    } else {
+                        alert('Error updating status: ' + (data.message || 'Unknown error'));
+                    }
+                } catch (e) {
+                    alert('Error parsing response from server.');
+                }
+            } else {
+                alert('HTTP Error: ' + xhr.status + ' - ' + xhr.statusText);
+            }
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while updating status.');
-    });
+    };
+    xhr.onerror = function() {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        alert('Network error occurred while updating status.');
+    };
+    xhr.send(formData);
+}
+
+// Alternative method - open in new window
+function viewApplicationNewWindow(applicationId) {
+    const url = 'get-application-details.php?id=' + applicationId + '&popup=1';
+    window.open(url, 'ApplicationDetails', 'width=800,height=600,scrollbars=yes,resizable=yes');
 }
 </script>
 

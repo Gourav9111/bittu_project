@@ -6,6 +6,7 @@ require_once '../config.php';
 $_SESSION['admin_id'] = 1;
 
 $response = ['status' => 'error', 'message' => '', 'html' => ''];
+$popup_mode = isset($_GET['popup']) && $_GET['popup'] == '1';
 
 if (isset($_GET['id'])) {
     $application_id = intval($_GET['id']);
@@ -264,6 +265,81 @@ if (isset($_GET['id'])) {
     $response['message'] = 'Invalid application ID';
 }
 
-header('Content-Type: application/json');
-echo json_encode($response);
+if ($popup_mode && $response['status'] === 'success') {
+    // For popup mode, return HTML page instead of JSON
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Application Details</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    </head>
+    <body>
+        <div class="container-fluid py-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="text-danger mb-0">Application Details</h4>
+                <button class="btn btn-secondary btn-sm" onclick="window.close()">
+                    <i class="fas fa-times me-1"></i>Close
+                </button>
+            </div>
+            <?php echo $response['html']; ?>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
+        function updateApplicationStatus(form) {
+            const formData = new FormData(form);
+            formData.append('application_id', form.dataset.appId);
+            
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Updating...';
+            submitBtn.disabled = true;
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'update-application-status.php', true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                    
+                    if (xhr.status === 200) {
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            if (data.success) {
+                                alert('Application status updated successfully!');
+                                if (window.opener) {
+                                    window.opener.location.reload();
+                                    window.close();
+                                } else {
+                                    location.reload();
+                                }
+                            } else {
+                                alert('Error updating status: ' + (data.message || 'Unknown error'));
+                            }
+                        } catch (e) {
+                            alert('Error parsing response from server.');
+                        }
+                    } else {
+                        alert('HTTP Error: ' + xhr.status + ' - ' + xhr.statusText);
+                    }
+                }
+            };
+            xhr.onerror = function() {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                alert('Network error occurred while updating status.');
+            };
+            xhr.send(formData);
+        }
+        </script>
+    </body>
+    </html>
+    <?php
+} else {
+    header('Content-Type: application/json');
+    echo json_encode($response);
+}
 ?>
