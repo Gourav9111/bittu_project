@@ -1,3 +1,4 @@
+
 <?php
 require_once '../config-dev.php';
 
@@ -10,7 +11,7 @@ if (isset($_GET['id'])) {
     $application_id = intval($_GET['id']);
     
     try {
-        // Fetch application details
+        // Fetch application details with proper MySQL syntax
         $stmt = $pdo->prepare("
             SELECT da.*, du.name as dsa_name, du.dsa_id
             FROM dsa_applications da 
@@ -18,17 +19,40 @@ if (isset($_GET['id'])) {
             WHERE da.id = ?
         ");
         $stmt->execute([$application_id]);
-        $application = $stmt->fetch();
+        $application = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($application) {
-            // Parse reference details
-            $references = $application['reference_details'] ? json_decode($application['reference_details'], true) : [];
+            // Parse reference details - handle both array and string formats
+            $references = [];
+            if ($application['reference_details']) {
+                $decoded = json_decode($application['reference_details'], true);
+                $references = is_array($decoded) ? $decoded : [];
+            }
             
-            // Parse file arrays
-            $salary_slips = $application['salary_slip_files'] ? json_decode($application['salary_slip_files'], true) : [];
-            $other_docs = $application['other_documents'] ? json_decode($application['other_documents'], true) : [];
-            $itr_files = $application['itr_files'] ? json_decode($application['itr_files'], true) : [];
-            $property_papers = $application['property_papers'] ? json_decode($application['property_papers'], true) : [];
+            // Parse file arrays - handle both array and string formats
+            $salary_slips = [];
+            if ($application['salary_slip_files']) {
+                $decoded = json_decode($application['salary_slip_files'], true);
+                $salary_slips = is_array($decoded) ? $decoded : [];
+            }
+            
+            $other_docs = [];
+            if ($application['other_documents']) {
+                $decoded = json_decode($application['other_documents'], true);
+                $other_docs = is_array($decoded) ? $decoded : [];
+            }
+            
+            $itr_files = [];
+            if ($application['itr_files']) {
+                $decoded = json_decode($application['itr_files'], true);
+                $itr_files = is_array($decoded) ? $decoded : [];
+            }
+            
+            $property_papers = [];
+            if ($application['property_papers']) {
+                $decoded = json_decode($application['property_papers'], true);
+                $property_papers = is_array($decoded) ? $decoded : [];
+            }
             
             $html = '<div class="application-details">';
             
@@ -48,12 +72,15 @@ if (isset($_GET['id'])) {
             }
             $html .= '">' . htmlspecialchars($application['status']) . '</span></p>';
             $html .= '<p><strong>Submitted by DSA:</strong> ' . htmlspecialchars($application['dsa_name']) . ' (' . htmlspecialchars($application['dsa_id']) . ')</p>';
+            $html .= '<p><strong>Created:</strong> ' . date('d M Y, H:i', strtotime($application['created_at'])) . '</p>';
             $html .= '</div>';
             $html .= '<div class="col-md-6">';
             $html .= '<h6 class="text-danger">Customer Information</h6>';
             $html .= '<p><strong>Name:</strong> ' . htmlspecialchars($application['customer_name']) . '</p>';
             $html .= '<p><strong>Mobile:</strong> ' . htmlspecialchars($application['customer_mobile']) . '</p>';
-            $html .= '<p><strong>Email:</strong> ' . htmlspecialchars($application['customer_email']) . '</p>';
+            if ($application['customer_email']) {
+                $html .= '<p><strong>Email:</strong> ' . htmlspecialchars($application['customer_email']) . '</p>';
+            }
             if ($application['mother_name']) {
                 $html .= '<p><strong>Mother Name:</strong> ' . htmlspecialchars($application['mother_name']) . '</p>';
             }
@@ -67,20 +94,24 @@ if (isset($_GET['id'])) {
             $html .= '<div class="row">';
             
             // Aadhar Card
-            $html .= '<div class="col-md-6 mb-2">';
-            $html .= '<strong>Aadhar Card:</strong> ' . htmlspecialchars($application['aadhar_card_number']);
-            if ($application['aadhar_card_file']) {
-                $html .= ' <span class="badge bg-success">File Uploaded</span>';
+            if ($application['aadhar_card_number']) {
+                $html .= '<div class="col-md-6 mb-2">';
+                $html .= '<strong>Aadhar Card:</strong> ' . htmlspecialchars($application['aadhar_card_number']);
+                if ($application['aadhar_card_file']) {
+                    $html .= ' <span class="badge bg-success">File Uploaded</span>';
+                }
+                $html .= '</div>';
             }
-            $html .= '</div>';
             
             // PAN Card
-            $html .= '<div class="col-md-6 mb-2">';
-            $html .= '<strong>PAN Card:</strong> ' . htmlspecialchars($application['pan_card_number']);
-            if ($application['pan_card_file']) {
-                $html .= ' <span class="badge bg-success">File Uploaded</span>';
+            if ($application['pan_card_number']) {
+                $html .= '<div class="col-md-6 mb-2">';
+                $html .= '<strong>PAN Card:</strong> ' . htmlspecialchars($application['pan_card_number']);
+                if ($application['pan_card_file']) {
+                    $html .= ' <span class="badge bg-success">File Uploaded</span>';
+                }
+                $html .= '</div>';
             }
-            $html .= '</div>';
             
             // Bank Statement
             if ($application['bank_statement_file']) {
@@ -90,9 +121,9 @@ if (isset($_GET['id'])) {
             }
             
             // Salary Information
-            if ($application['salary_amount']) {
+            if ($application['salary_amount'] && $application['salary_amount'] > 0) {
                 $html .= '<div class="col-md-6 mb-2">';
-                $html .= '<strong>Salary Amount:</strong> ₹' . number_format($application['salary_amount']);
+                $html .= '<strong>Salary Amount:</strong> ₹' . number_format($application['salary_amount'], 2);
                 $html .= '</div>';
             }
             
@@ -145,7 +176,9 @@ if (isset($_GET['id'])) {
                 $html .= '<div class="col-12">';
                 $html .= '<h6 class="text-danger">References</h6>';
                 foreach ($references as $i => $ref) {
-                    $html .= '<p><strong>Reference ' . ($i + 1) . ':</strong> ' . htmlspecialchars($ref['name']) . ' - ' . htmlspecialchars($ref['number']) . '</p>';
+                    if (is_array($ref) && isset($ref['name']) && isset($ref['number'])) {
+                        $html .= '<p><strong>Reference ' . ($i + 1) . ':</strong> ' . htmlspecialchars($ref['name']) . ' - ' . htmlspecialchars($ref['number']) . '</p>';
+                    }
                 }
                 $html .= '</div>';
                 $html .= '</div>';
@@ -206,7 +239,7 @@ if (isset($_GET['id'])) {
             $html .= '</div>';
             $html .= '<div class="row">';
             $html .= '<div class="col-12">';
-            $html .= '<textarea name="admin_notes" class="form-control" rows="3" placeholder="Add admin notes...">' . htmlspecialchars($application['admin_notes']) . '</textarea>';
+            $html .= '<textarea name="admin_notes" class="form-control" rows="3" placeholder="Add admin notes...">' . htmlspecialchars($application['admin_notes'] ?? '') . '</textarea>';
             $html .= '</div>';
             $html .= '</div>';
             $html .= '</form>';
@@ -223,6 +256,7 @@ if (isset($_GET['id'])) {
         
     } catch (Exception $e) {
         $response['message'] = 'Database error: ' . $e->getMessage();
+        error_log('Get Application Details Error: ' . $e->getMessage());
     }
 } else {
     $response['message'] = 'Invalid application ID';
