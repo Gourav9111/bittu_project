@@ -5,7 +5,7 @@ require_once '../config-dev.php';
 // For development - bypass login check
 $_SESSION['admin_id'] = 1;
 
-$response = ['success' => false, 'message' => '', 'html' => ''];
+$response = ['status' => 'error', 'message' => '', 'html' => ''];
 
 if (isset($_GET['id'])) {
     $application_id = intval($_GET['id']);
@@ -13,7 +13,8 @@ if (isset($_GET['id'])) {
     try {
         // Fetch application details with proper MySQL syntax
         $stmt = $pdo->prepare("
-            SELECT da.*, du.name as dsa_name, du.dsa_id
+            SELECT da.*, du.name as dsa_name, 
+                   COALESCE(du.dsa_id, CONCAT('DSA', LPAD(du.id, 4, '0'))) as dsa_id
             FROM dsa_applications da 
             JOIN dsa_users du ON da.dsa_user_id = du.id 
             WHERE da.id = ?
@@ -248,7 +249,7 @@ if (isset($_GET['id'])) {
             
             $html .= '</div>';
             
-            $response['success'] = true;
+            $response['status'] = 'success';
             $response['html'] = $html;
         } else {
             $response['message'] = 'Application not found';
@@ -257,6 +258,7 @@ if (isset($_GET['id'])) {
     } catch (Exception $e) {
         $response['message'] = 'Database error: ' . $e->getMessage();
         error_log('Get Application Details Error: ' . $e->getMessage());
+        error_log('Application ID requested: ' . $application_id);
     }
 } else {
     $response['message'] = 'Invalid application ID';
