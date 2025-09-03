@@ -239,16 +239,22 @@ include '../includes/header.php';
 
 <script>
 function viewApplication(applicationId) {
-    // Load application details via AJAX
+    const modal = new bootstrap.Modal(document.getElementById('applicationModal'));
+    const modalBody = document.getElementById('applicationDetails');
+    modalBody.innerHTML = `<div class="text-center"><div class="spinner-border text-danger" role="status"><span class="visually-hidden">Loading...</span></div></div>`;
+    modal.show();
+
     fetch('get-application-details.php?id=' + applicationId)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.status === 'success') {
-                document.getElementById('applicationDetails').innerHTML = data.html;
-                const modal = new bootstrap.Modal(document.getElementById('applicationModal'));
-                modal.show();
+                modalBody.innerHTML = data.html;
                 
-                // Add event listener for status update form
                 const statusForm = document.getElementById('updateApplicationStatus');
                 if (statusForm) {
                     statusForm.addEventListener('submit', function(e) {
@@ -257,12 +263,12 @@ function viewApplication(applicationId) {
                     });
                 }
             } else {
-                alert('Error loading application details: ' + data.message);
+                modalBody.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while loading application details.');
+            console.error('Fetch Error:', error);
+            modalBody.innerHTML = `<div class="alert alert-danger">An error occurred while loading application details.</div>`;
         });
 }
 

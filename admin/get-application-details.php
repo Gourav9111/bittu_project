@@ -14,7 +14,7 @@ if (isset($_GET['id'])) {
         // Fetch application details with proper MySQL syntax
         $stmt = $pdo->prepare("
             SELECT da.*, du.name as dsa_name, 
-                   COALESCE(du.dsa_id, CONCAT('DSA', LPAD(du.id, 4, '0'))) as dsa_id
+                   CONCAT('DSA', LPAD(du.id, 4, '0')) as dsa_id
             FROM dsa_applications da 
             JOIN dsa_users du ON da.dsa_user_id = du.id 
             WHERE da.id = ?
