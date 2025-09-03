@@ -250,6 +250,15 @@ function viewApplication(applicationId) {
                 document.getElementById('applicationDetails').innerHTML = data.html;
                 const modal = new bootstrap.Modal(document.getElementById('applicationModal'));
                 modal.show();
+                
+                // Add event listener for status update form
+                const statusForm = document.getElementById('updateApplicationStatus');
+                if (statusForm) {
+                    statusForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        updateApplicationStatus(this);
+                    });
+                }
             } else {
                 alert('Error loading application details: ' + data.message);
             }
@@ -258,6 +267,29 @@ function viewApplication(applicationId) {
             console.error('Error:', error);
             alert('An error occurred while loading application details.');
         });
+}
+
+function updateApplicationStatus(form) {
+    const formData = new FormData(form);
+    formData.append('application_id', form.dataset.appId);
+    
+    fetch('update-application-status.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Application status updated successfully!');
+            location.reload(); // Refresh the page to show updated status
+        } else {
+            alert('Error updating status: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while updating status.');
+    });
 }
 </script>
 
