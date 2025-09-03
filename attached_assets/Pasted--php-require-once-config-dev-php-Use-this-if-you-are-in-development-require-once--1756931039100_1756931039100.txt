@@ -1,0 +1,183 @@
+<?php
+// require_once '../config-dev.php'; // Use this if you are in development
+require_once '../config.php'; // Use this for production
+
+// For development - bypass login check
+$_SESSION['admin_id'] = 1;
+
+// Get application ID from URL
+$application_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+if (!$application_id) {
+    die("Invalid request. Application ID is missing.");
+}
+
+// Fetch application details, joining with dsa_users
+try {
+    $stmt = $pdo->prepare("
+        SELECT da.*, du.name as dsa_name, du.dsa_id
+        FROM dsa_applications da 
+        JOIN dsa_users du ON da.dsa_user_id = du.id 
+        WHERE da.id = ?
+    ");
+    $stmt->execute([$application_id]);
+    $application = $stmt->fetch();
+    
+    if (!$application) {
+        die("Application not found.");
+    }
+
+    // Parse file arrays (JSON encoded text fields)
+    $salary_slips = json_decode($application['salary_slip_files'], true) ?? [];
+    $other_docs = json_decode($application['other_documents'], true) ?? [];
+    $itr_files = json_decode($application['itr_files'], true) ?? [];
+    $property_papers = json_decode($application['property_papers'], true) ?? [];
+    $references = json_decode($application['reference_details'], true) ?? [];
+    
+} catch (PDOException $e) {
+    die("Database error: " . $e->getMessage());
+}
+
+$page_title = "Application Details - " . $application['application_id'];
+include '../includes/header.php';
+?>
+
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="text-danger fw-bold">Application Details</h2>
+                    <p class="text-muted mb-0">Application ID: <?php echo htmlspecialchars($application['application_id']); ?></p>
+                </div>
+                <a href="dsa-applications.php?dsa_id=<?php echo htmlspecialchars($application['dsa_user_id']); ?>" class="btn btn-outline-danger">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Applications
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="text-danger fw-bold">Customer Info</h5>
+                            <p><strong>Name:</strong> <?= htmlspecialchars($application['customer_name'] ?? '-') ?></p>
+                            <p><strong>Mobile:</strong> <?= htmlspecialchars($application['customer_mobile'] ?? '-') ?></p>
+                            <p><strong>Email:</strong> <?= htmlspecialchars($application['customer_email'] ?? '-') ?></p>
+                            <p><strong>Mother Name:</strong> <?= htmlspecialchars($application['mother_name'] ?? '-') ?></p>
+                            <p><strong>Loan Type:</strong> <?= htmlspecialchars($application['loan_type'] ?? '-') ?></p>
+                            <p><strong>Salary:</strong> <?= number_format($application['salary_amount'], 2) ?? '-' ?></p>
+                            <p><strong>Income Type:</strong> <?= htmlspecialchars($application['income_type'] ?? '-') ?></p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="text-danger fw-bold">Documents</h5>
+                            <ul class="list-group">
+                                <?php if (!empty($application['aadhar_card_file'])): ?>
+                                <a href="../uploads/<?= htmlspecialchars($application['aadhar_card_file']) ?>" target="_blank" class="list-group-item list-group-item-action">
+                                    <strong>Aadhar Card:</strong> View File <i class="fas fa-file-alt float-end text-success"></i>
+                                </a>
+                                <?php endif; ?>
+                                
+                                <?php if (!empty($application['pan_card_file'])): ?>
+                                <a href="../uploads/<?= htmlspecialchars($application['pan_card_file']) ?>" target="_blank" class="list-group-item list-group-item-action">
+                                    <strong>PAN Card:</strong> View File <i class="fas fa-file-alt float-end text-success"></i>
+                                </a>
+                                <?php endif; ?>
+
+                                <?php if (!empty($application['bank_statement_file'])): ?>
+                                <a href="../uploads/<?= htmlspecialchars($application['bank_statement_file']) ?>" target="_blank" class="list-group-item list-group-item-action">
+                                    <strong>Bank Statement:</strong> View File <i class="fas fa-file-alt float-end text-success"></i>
+                                </a>
+                                <?php endif; ?>
+
+                                <?php foreach($salary_slips as $file): ?>
+                                    <a href="../uploads/<?= htmlspecialchars($file) ?>" target="_blank" class="list-group-item list-group-item-action">
+                                        <strong>Salary Slip:</strong> View File <i class="fas fa-file-alt float-end text-success"></i>
+                                    </a>
+                                <?php endforeach; ?>
+
+                                <?php foreach($itr_files as $file): ?>
+                                    <a href="../uploads/<?= htmlspecialchars($file) ?>" target="_blank" class="list-group-item list-group-item-action">
+                                        <strong>ITR File:</strong> View File <i class="fas fa-file-alt float-end text-success"></i>
+                                    </a>
+                                <?php endforeach; ?>
+
+                                <?php foreach($property_papers as $file): ?>
+                                    <a href="../uploads/<?= htmlspecialchars($file) ?>" target="_blank" class="list-group-item list-group-item-action">
+                                        <strong>Property Paper:</strong> View File <i class="fas fa-file-alt float-end text-success"></i>
+                                    </a>
+                                <?php endforeach; ?>
+
+                                <?php if (!empty($application['gumasta_udhyam_file'])): ?>
+                                <a href="../uploads/<?= htmlspecialchars($application['gumasta_udhyam_file']) ?>" target="_blank" class="list-group-item list-group-item-action">
+                                    <strong>Gumasta/Udhyam File:</strong> View File <i class="fas fa-file-alt float-end text-success"></i>
+                                </a>
+                                <?php endif; ?>
+
+                                <?php if (!empty($application['electricity_bill_file'])): ?>
+                                <a href="../uploads/<?= htmlspecialchars($application['electricity_bill_file']) ?>" target="_blank" class="list-group-item list-group-item-action">
+                                    <strong>Electricity Bill:</strong> View File <i class="fas fa-file-alt float-end text-success"></i>
+                                </a>
+                                <?php endif; ?>
+
+                                <?php foreach($other_docs as $file): ?>
+                                    <a href="../uploads/<?= htmlspecialchars($file) ?>" target="_blank" class="list-group-item list-group-item-action">
+                                        <strong>Other Document:</strong> View File <i class="fas fa-file-alt float-end text-success"></i>
+                                    </a>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="text-danger fw-bold">References</h5>
+                            <?php if (!empty($references)): ?>
+                                <ul class="list-group list-group-flush">
+                                <?php foreach($references as $i => $ref): ?>
+                                    <li class="list-group-item">
+                                        <strong>Reference <?= ($i + 1) ?>:</strong> <?= htmlspecialchars($ref['name']) ?> - <?= htmlspecialchars($ref['number']) ?>
+                                    </li>
+                                <?php endforeach; ?>
+                                </ul>
+                            <?php else: ?>
+                                <p>No references provided.</p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="text-danger fw-bold">Update Status</h5>
+                            <form action="update-application-status.php" method="POST">
+                                <input type="hidden" name="id" value="<?= htmlspecialchars($application['id']) ?>">
+                                <div class="mb-3">
+                                    <label for="statusSelect" class="form-label">Change Status</label>
+                                    <select name="status" id="statusSelect" class="form-select" required>
+                                        <option value="Pending" <?= $application['status'] == 'Pending' ? 'selected' : '' ?>>Pending</option>
+                                        <option value="In Progress" <?= $application['status'] == 'In Progress' ? 'selected' : '' ?>>In Progress</option>
+                                        <option value="Approved" <?= $application['status'] == 'Approved' ? 'selected' : '' ?>>Approved</option>
+                                        <option value="Rejected" <?= $application['status'] == 'Rejected' ? 'selected' : '' ?>>Rejected</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="adminNotes" class="form-label">Admin Notes</label>
+                                    <textarea name="admin_notes" id="adminNotes" class="form-control" rows="3" placeholder="Add admin notes..."><?= htmlspecialchars($application['admin_notes'] ?? '') ?></textarea>
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-danger">Update Status</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php include '../includes/footer.php'; ?>
