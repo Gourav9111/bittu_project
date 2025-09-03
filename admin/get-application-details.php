@@ -1,6 +1,6 @@
 
 <?php
-require_once '../config-dev.php';
+require_once '../config.php';
 
 // For development - bypass login check
 $_SESSION['admin_id'] = 1;
